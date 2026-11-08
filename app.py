@@ -2,49 +2,50 @@ import streamlit as st
 import google.generativeai as genai
 import json
 
-st.set_page_config(page_title="Kuku Promo Finder", layout="wide")
-st.title("🎬 Kuku Microdrama Promo Finder")
-st.write("Extracts 20-60 second promo segments based on 3-second hooks, unresolved cliffhangers, and cold-audience coherence.")
+st.set_page_config(page_title="Kuku | Promo Extractor (Tension-Arc)", layout="wide")
+st.title("🎬 Kuku Promo Finder: Tension-Arc Pipeline")
+st.markdown("Extracts continuous 20-60s ad creatives using Arousal Anchors (Hooks) and Suspense Nodes (Cliffhangers).")
 
-api_key = st.text_input("Enter Gemini API Key (Required for inference):", type="password")
-script_text = st.text_area("Paste Screenplay (or Episode Text) Here:", height=300)
+api_key = st.text_input("Enter Gemini API Key (Required):", type="password")
+script_text = st.text_area("Paste Screenplay Episode Here:", height=350)
 
 PROMPT_TEMPLATE = """
-You are an expert microdrama video editor. Analyze the following screenplay text and extract the top 3 best promotional clips (promos).
-A good promo must:
-1. Be 20 to 60 seconds long (calculate duration using the script's timestamps).
-2. Open on a powerful hook in the first 3 seconds (e.g., a slap, dramatic reveal, or shocking line).
-3. End on a cliffhanger (an unresolved narrative or physical moment).
-4. Make complete sense to a scrolling viewer who has never seen the show.
+You are a performance marketing video editor for a microdrama app. Your task is to apply the "Tension-Arc" methodology to the following script and extract the top 3 best standalone promos.
 
-Return the results STRICTLY as a JSON array of objects. Do not include markdown formatting or backticks. Format each object exactly like this:
+RULES:
+1. Duration: Must be between 20s and 60s continuous (use the provided timestamps).
+2. Arousal Anchor (Hook): The first 3 seconds must contain extreme emotional dialogue, a physical confrontation, or a dramatic reveal.
+3. Suspense Node (Cliffhanger): The clip must cut on an unresolved moment of physical jeopardy or high emotional tension.
+4. Context Independence: The clip must require ZERO backstory to understand the stakes.
+
+Return strictly as a JSON array. Format exactly as follows without markdown backticks:
 [
   {
     "rank": 1,
-    "episode": "Episode Name/Number",
+    "episode": "Episode Number",
     "start_timestamp": "00:00.00",
     "end_timestamp": "00:00.00",
-    "hook": "Describe the 3-second hook.",
-    "cliffhanger": "Describe the unresolved moment at the cut.",
-    "why_it_works": "One line on why this works for a cold audience.",
-    "quality_check": "Note any potential weakness (e.g., lacks visual action, relies too heavily on prior context)."
+    "duration": "45s",
+    "hook": "Describe the 3-second hook event.",
+    "cliffhanger": "Describe the unresolved tension at the cut.",
+    "why_it_works": "Why this converts cold audiences.",
+    "quality_check": "Identify any potential weakness (e.g., quiet tension, complex lore)."
   }
 ]
 
-Screenplay:
+SCRIPT:
 {script}
 """
 
-if st.button("Find Promos"):
+if st.button("Extract Promos"):
     if not api_key or not script_text:
-        st.error("Please provide both an API key and the screenplay text.")
+        st.error("Please provide both an API key and script text.")
     else:
         try:
             genai.configure(api_key=api_key)
-            # 1.5 Flash is used for high-speed, long-context parsing
             model = genai.GenerativeModel('gemini-1.5-flash')
 
-            with st.spinner("Analyzing screenplay for optimal hooks and cliffhangers..."):
+            with st.spinner("Executing Tension-Arc Pipeline... isolating hooks and cliffhangers..."):
                 response = model.generate_content(PROMPT_TEMPLATE.format(script=script_text))
                 
                 raw_text = response.text.strip()
@@ -55,14 +56,14 @@ if st.button("Find Promos"):
                     
                 promos = json.loads(raw_text)
 
-                st.success("Analysis Complete! Top candidate promos ranked:")
+                st.success("Analysis Complete! Top candidate arcs extracted:")
                 
                 for promo in promos:
-                    with st.expander(f"Rank {promo['rank']}: {promo['start_timestamp']} - {promo['end_timestamp']} ({promo['episode']})"):
+                    with st.expander(f"Rank {promo['rank']}: {promo['start_timestamp']} to {promo['end_timestamp']} ({promo['duration']})"):
                         st.markdown(f"**🪝 Hook (0-3s):** {promo['hook']}")
                         st.markdown(f"**✂️ Cliffhanger:** {promo['cliffhanger']}")
                         st.markdown(f"**🎯 Why it works:** {promo['why_it_works']}")
                         st.markdown(f"**⚠️ Quality Check:** {promo['quality_check']}")
 
         except Exception as e:
-            st.error(f"An error occurred during processing: {e}")
+            st.error(f"Pipeline Execution Error: {e}")
